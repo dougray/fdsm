@@ -26,6 +26,7 @@ import apdu4j.LoggingCardTerminal;
 import apdu4j.TerminalManager;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.http.client.HttpResponseException;
+import org.apache.commons.io.FilenameUtils;
 import pro.javacard.AID;
 import pro.javacard.CAPFile;
 
@@ -36,6 +37,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.util.*;
@@ -49,6 +51,9 @@ public class Main extends CommandLineInterface {
             // Inspect arguments
             parseArguments(argv);
 
+            if (args.has(OPT_TRACE_API)) {
+                System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "trace");
+            }
             if (args.has(OPT_STORE_APPS)) {
                 FidesmoApiClient client = getClient();
 
@@ -64,8 +69,13 @@ public class Main extends CommandLineInterface {
                 }
             }
 
-            if (args.has(OPT_UPLOAD) || args.has(OPT_DELETE_APPLET) || args.has(OPT_FLUSH_APPLETS) || args.has(OPT_CLEANUP) || args.has(OPT_LIST_APPLETS) || args.has(OPT_LIST_RECIPES)) {
+            if (args.has(OPT_UPLOAD) || args.has(OPT_DELETE_APPLET) || args.has(OPT_FLUSH_APPLETS) || args.has(OPT_CLEANUP) || args.has(OPT_LIST_APPLETS) || args.has(OPT_LIST_RECIPES) || args.has(OPT_RECIPE)) {
                 AuthenticatedFidesmoApiClient client = getAuthenticatedClient();
+                if (args.has(OPT_RECIPE)) {
+                    File f = (File) args.valueOf(OPT_RECIPE);
+                    URI uri = client.getURI(FidesmoApiClient.SERVICE_RECIPE_URL, client.getAppId(), FilenameUtils.getBaseName(f.getName()));
+                    client.put(uri, new String(Files.readAllBytes(f.toPath())));
+                }
 
                 // Delete a specific applet
                 if (args.has(OPT_DELETE_APPLET)) {
@@ -173,7 +183,7 @@ public class Main extends CommandLineInterface {
                 if (args.has(OPT_CARD_INFO)) {
                     System.out.println("Card serial: " + HexUtils.bin2hex(fidesmoCard.getCIN()));
                     System.out.println("Platform version: " + fidesmoCard.platformVersion);
-                    System.out.println("OS type: " + fidesmoCard.platformType);
+                    System.out.println("OS type: " + fidesmoCard.platformType + " (" + fidesmoCard.getPlatform().name() + ")");
                 } else if (args.has(OPT_CARD_APPS)) {
                     FidesmoApiClient client = getClient();
                     List<byte[]> apps = fidesmoCard.listApps();

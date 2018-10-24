@@ -28,6 +28,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.Header;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -38,6 +39,8 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -72,7 +75,7 @@ public class FidesmoApiClient {
     public static final String CONNECTOR_ERROR_URL = "connector/error";
 
 
-    private boolean restdebug = false; // RPC debug
+    private boolean restdebug = System.getenv().getOrDefault("FDSM_TRACE_API", "false").equals("true"); // RPC debug
     private final CloseableHttpClient http;
     private final HttpClientContext context = HttpClientContext.create();
     protected final String appId;
@@ -81,6 +84,7 @@ public class FidesmoApiClient {
 
     static DefaultPrettyPrinter printer = new DefaultPrettyPrinter();
     static ObjectMapper mapper = new ObjectMapper();
+    private final static Logger logger = LoggerFactory.getLogger(FidesmoApiClient.class);
 
     static {
         // Configure our pretty printer
@@ -132,9 +136,12 @@ public class FidesmoApiClient {
             request.setHeader("app_key", appKey);
         }
         if (restdebug) {
-            System.out.println(request.getMethod() + ": " + request.getURI());
+            Header ctype = request.getFirstHeader("Content-type");
+            // JSON RPC gets logged elsewhere, with content
+            if (ctype != null && ctype.toString().equals(ContentType.APPLICATION_JSON.toString())) {
+                logger.trace("{}: {}", request.getMethod(), request.getURI());
+            }
         }
-
         CloseableHttpResponse response = http.execute(request, context);
         int responsecode = response.getStatusLine().getStatusCode();
         if (responsecode < 200 || responsecode > 299) {
@@ -149,31 +156,29 @@ public class FidesmoApiClient {
     }
 
     JsonNode rpc(URI uri, JsonNode request) throws IOException {
-        HttpRequestBase req;
+        final HttpRequestBase req;
         if (request != null) {
             HttpPost post = new HttpPost(uri);
             post.setEntity(new StringEntity(request.toString()));
+            post.setHeader("Content-type", ContentType.APPLICATION_JSON.toString());
             req = post;
-            if (restdebug) {
-                System.out.println("POST: " + uri);
-                System.out.println(mapper.writer(printer).writeValueAsString(request));
-            }
         } else {
-            HttpGet get = new HttpGet(uri);
-            req = get;
-            if (restdebug) {
-                System.out.println("GET: " + uri);
-            }
+            req = new HttpGet(uri);
         }
 
+        if (restdebug) {
+            logger.trace("{}: {}", req.getMethod(), req.getURI());
+            if (req instanceof HttpPost) {
+                logger.trace(mapper.writer(printer).writeValueAsString(request));
+            }
+        }
         req.setHeader("Accept", ContentType.APPLICATION_JSON.toString());
-        req.setHeader("Content-type", ContentType.APPLICATION_JSON.toString());
 
         try (CloseableHttpResponse response = transmit(req)) {
             JsonNode json = mapper.readTree(response.getEntity().getContent());
             if (restdebug) {
-                System.out.println("RECV:");
-                System.out.println(mapper.writer(printer).writeValueAsString(json));
+                logger.trace("RECV: {}", response.getStatusLine());
+                logger.trace(mapper.writer(printer).writeValueAsString(json));
             }
             return json;
         }
@@ -212,7 +217,8 @@ public class FidesmoApiClient {
         if (n == null)
             return "";
         if (n.size() > 0) {
-            Map<String, Object> langs = mapper.convertValue(n, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> langs = mapper.convertValue(n, new TypeReference<Map<String, Object>>() {
+            });
             Map.Entry<String, Object> first = langs.entrySet().iterator().next();
             return langs.getOrDefault(Locale.getDefault().getLanguage(), langs.getOrDefault("en", first.getValue())).toString();
         } else {

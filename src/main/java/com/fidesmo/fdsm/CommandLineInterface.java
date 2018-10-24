@@ -33,6 +33,7 @@ import java.util.Arrays;
 abstract class CommandLineInterface {
     final static String OPT_APP_ID = "app-id";
     final static String OPT_APP_KEY = "app-key";
+    final static String OPT_READER = "reader";
     final static String OPT_APPLET = "applet";
     final static String OPT_DELIVER = "deliver";
     final static String OPT_UPLOAD = "upload";
@@ -43,6 +44,7 @@ abstract class CommandLineInterface {
     final static String OPT_STORE_APPS = "store-apps";
     final static String OPT_FLUSH_APPLETS = "flush-applets";
     final static String OPT_LIST_RECIPES = "list-recipes";
+    final static String OPT_RECIPE = "recipe";
     final static String OPT_CLEANUP = "cleanup";
     final static String OPT_INSTALL = "install";
     final static String OPT_PARAMS = "params";
@@ -102,6 +104,7 @@ abstract class CommandLineInterface {
         OptionParser parser = new OptionParser();
 
         parser.acceptsAll(Arrays.asList("h", "?", "help"), "Shows this help").forHelp();
+        parser.acceptsAll(Arrays.asList("r", OPT_READER), "Specify reader").withRequiredArg().describedAs("name");
         parser.accepts(OPT_APP_ID, "Specify application ID").withRequiredArg().describedAs("HEX");
         parser.accepts(OPT_APP_KEY, "Specify application key").withRequiredArg().describedAs("HEX");
         parser.accepts(OPT_STORE_DATA, "STORE DATA to applet").withRequiredArg().describedAs("HEX");
@@ -110,13 +113,14 @@ abstract class CommandLineInterface {
         parser.accepts(OPT_UPLOAD, "Upload CAP to Fidesmo").withOptionalArg().ofType(File.class).describedAs("CAP file");
         parser.accepts(OPT_LIST_APPLETS, "List applets at Fidesmo");
         parser.accepts(OPT_DELETE_APPLET, "Deletes applet from Fidesmo").withRequiredArg().describedAs("ID");
+        parser.accepts(OPT_FLUSH_APPLETS, "Flush all applets from Fidesmo");
         parser.accepts(OPT_CARD_APPS, "List apps on the card");
         parser.accepts(OPT_CARD_INFO, "Show info about the card");
         parser.accepts(OPT_SECURE_APDU, "Send APDU via secure channel").withRequiredArg().describedAs("HEX");
 
         parser.accepts(OPT_STORE_APPS, "List apps in the store");
-        parser.accepts(OPT_FLUSH_APPLETS, "Flush all applets from Fidesmo");
         parser.accepts(OPT_LIST_RECIPES, "List recipes at Fidesmo");
+        parser.accepts(OPT_RECIPE, "Install a recipe").withRequiredArg().ofType(File.class).describedAs("recipe file");
         parser.accepts(OPT_CLEANUP, "Clean up stale recipes");
         parser.accepts(OPT_INSTALL, "Install CAP to card").withRequiredArg().ofType(File.class).describedAs("CAP file");
 

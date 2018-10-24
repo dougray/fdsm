@@ -26,6 +26,8 @@ import com.payneteasy.tlv.BerTag;
 import com.payneteasy.tlv.BerTlv;
 import com.payneteasy.tlv.BerTlvParser;
 import com.payneteasy.tlv.BerTlvs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import pro.javacard.AID;
 
 import javax.smartcardio.CardChannel;
@@ -39,6 +41,8 @@ import java.util.*;
 
 // Represents a live, personalized Fidesmo card
 public class FidesmoCard {
+    private final static Logger logger = LoggerFactory.getLogger(FidesmoCard.class);
+
     public enum ChipPlatform {
         JCOP242R1,
         JCOP242R2,
@@ -241,11 +245,16 @@ public class FidesmoCard {
     }
 
     public List<byte[]> listApps() throws CardException {
-        // Fidesmo RID
-        final byte[] prefix = HexUtils.hex2bin("A00000061701");
         List<byte[]> apps = new LinkedList<>();
-        CommandAPDU select = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, prefix);
-        ResponseAPDU response;
+        // Fidesmo RID
+        // First select ISD
+        CommandAPDU select = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, 256);
+        ResponseAPDU response = channel.transmit(select);
+        if (response.getSW() != 0x9000) {
+            logger.warn("Could not select ISD: " + Integer.toHexString(response.getSW()));
+        }
+        final byte[] prefix = HexUtils.hex2bin("A00000061701");
+        select = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, prefix, 256);
         do {
             response = channel.transmit(select);
             if (response.getSW() == 0x9000) {

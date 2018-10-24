@@ -78,7 +78,7 @@ public class ServiceDeliverySession {
 
         JsonNode delivery = client.rpc(client.getURI(FidesmoApiClient.SERVICE_DELIVER_URL), deliveryrequest);
         String sessionId = delivery.get("sessionId").asText();
-
+        System.out.println("Session ID: " + sessionId);
         // Now loop getting the operations
         while (true) {
             ObjectNode fetchrequest = JsonNodeFactory.instance.objectNode();
@@ -109,7 +109,9 @@ public class ServiceDeliverySession {
                         ArrayList<String> responses = new ArrayList<>();
                         try {
                             for (JsonNode cmd : commands) {
-                                responses.add(HexUtils.bin2hex(card.transmit(HexUtils.hex2bin(cmd.asText()))));
+                                byte[] response = card.transmit(HexUtils.hex2bin(cmd.asText()));
+                                String responsehex = HexUtils.bin2hex(response);
+                                responses.add(responsehex);
                             }
                         } catch (CardException e) {
                             // Indicate error to Fidesmo API
